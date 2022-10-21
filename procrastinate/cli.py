@@ -15,7 +15,8 @@ else:
     from typing import Literal
 
 import procrastinate
-from procrastinate import connector, exceptions, jobs, shell, types, utils, worker
+from procrastinate import exceptions, jobs, shell, types, utils, worker
+from procrastinate.connector import BaseConnector
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def handle_errors():
         raise click.ClickException("\n".join(e for e in messages if e))
 
 
-class MissingAppConnector(connector.BaseConnector):
+class MissingAppConnector(BaseConnector):
     def open(self, *args, **kwargs):
         pass
 

@@ -34,6 +34,7 @@ django = ["django>=2.2"]
 sqlalchemy = ["sqlalchemy~=1.4"]
 psycopg2 = ["psycopg2-binary"]
 aiopg = ["aiopg", "psycopg2-binary"]
+asyncpg = ["asyncpg"]
 
 dev = [
     "black",

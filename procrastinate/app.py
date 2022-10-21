@@ -2,9 +2,8 @@ import functools
 import logging
 from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Union
 
-from procrastinate import blueprints
-from procrastinate import connector as connector_module
-from procrastinate import exceptions, jobs, manager, schema, utils
+from procrastinate import blueprints, exceptions, jobs, manager, schema, utils
+from procrastinate.connector.base import BaseConnector, Engine, Pool
 
 if TYPE_CHECKING:
     from procrastinate import worker
@@ -47,7 +46,7 @@ class App(blueprints.Blueprint):
     def __init__(
         self,
         *,
-        connector: connector_module.BaseConnector,
+        connector: BaseConnector,
         import_paths: Optional[Iterable[str]] = None,
         worker_defaults: Optional[Dict] = None,
         periodic_defaults: Optional[Dict] = None,
@@ -93,7 +92,7 @@ class App(blueprints.Blueprint):
 
         self._register_builtin_tasks()
 
-    def with_connector(self, connector: connector_module.BaseConnector) -> "App":
+    def with_connector(self, connector: BaseConnector) -> "App":
         """
         Create another app instance sychronized with this one, with a different
         connector. For all things regarding periodic tasks, the original app
@@ -252,9 +251,7 @@ class App(blueprints.Blueprint):
 
     def open(
         self,
-        pool_or_engine: Optional[
-            Union[connector_module.Pool, connector_module.Engine]
-        ] = None,
+        pool_or_engine: Optional[Union[Pool, Engine]] = None,
     ) -> "App":
         self.connector.open(pool_or_engine)
         return self
@@ -262,9 +259,7 @@ class App(blueprints.Blueprint):
     def close(self) -> None:
         self.connector.close()
 
-    def open_async(
-        self, pool: Optional[connector_module.Pool] = None
-    ) -> utils.AwaitableContext:
+    def open_async(self, pool: Optional[Pool] = None) -> utils.AwaitableContext:
         open_coro = functools.partial(self.connector.open_async, pool=pool)
         return utils.AwaitableContext(
             open_coro=open_coro,
