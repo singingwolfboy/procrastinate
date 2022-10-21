@@ -1,11 +1,10 @@
 import asyncio
+import datetime
 import logging
 
 import pytest
 
 from procrastinate import exceptions, job_context, jobs, tasks, worker
-
-from .. import conftest
 
 
 @pytest.fixture
@@ -125,7 +124,7 @@ async def test_process_job_retry_failed_job(
     async def coro(*args, **kwargs):
         pass
 
-    scheduled_at = conftest.aware_datetime(2000, 1, 1)
+    scheduled_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
     test_worker.run_job = mocker.Mock(
         side_effect=exceptions.JobRetry(scheduled_at=scheduled_at)
     )

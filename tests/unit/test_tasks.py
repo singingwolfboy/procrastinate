@@ -1,8 +1,10 @@
+import datetime
+
 import pytest
 
 from procrastinate import tasks, utils
 
-from .. import conftest
+tz1 = datetime.timezone(datetime.timedelta(hours=1))
 
 
 def task_func():
@@ -51,20 +53,20 @@ def test_configure_task_schedule_at(job_manager):
     job = tasks.configure_task(
         name="my_name",
         job_manager=job_manager,
-        schedule_at=conftest.aware_datetime(2000, 1, 1, tz_offset=1),
+        schedule_at=datetime.datetime(2000, 1, 1, tzinfo=tz1),
     ).job
 
-    assert job.scheduled_at == conftest.aware_datetime(2000, 1, 1, tz_offset=1)
+    assert job.scheduled_at == datetime.datetime(2000, 1, 1, tzinfo=tz1)
 
 
 def test_configure_task_schedule_in(job_manager, mocker):
-    now = conftest.aware_datetime(2000, 1, 1, tz_offset=1)
+    now = datetime.datetime(2000, 1, 1, tzinfo=tz1)
     mocker.patch.object(utils, "utcnow", return_value=now)
     job = tasks.configure_task(
         name="my_name", job_manager=job_manager, schedule_in={"hours": 2}
     ).job
 
-    assert job.scheduled_at == conftest.aware_datetime(2000, 1, 1, 2, tz_offset=1)
+    assert job.scheduled_at == datetime.datetime(2000, 1, 1, 2, tzinfo=tz1)
 
 
 def test_configure_task_schedule_in_and_schedule_at(job_manager):
@@ -72,7 +74,7 @@ def test_configure_task_schedule_in_and_schedule_at(job_manager):
         tasks.configure_task(
             name="my_name",
             job_manager=job_manager,
-            schedule_at=conftest.aware_datetime(2000, 1, 1, tz_offset=1),
+            schedule_at=datetime.datetime(2000, 1, 1, tzinfo=tz1),
             schedule_in={"hours": 2},
         )
 

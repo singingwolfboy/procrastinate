@@ -5,8 +5,6 @@ import pytest
 
 from procrastinate import exceptions, jobs, manager
 
-from .. import conftest
-
 
 @pytest.fixture
 def pg_job_manager(aiopg_connector):
@@ -45,7 +43,14 @@ def fetched_job_factory(deferred_job_factory, pg_job_manager):
     [
         ({"queue": "queue_a"}, None),
         ({"queue": "queue_a"}, ["queue_a"]),
-        ({"scheduled_at": conftest.aware_datetime(2000, 1, 1)}, None),
+        (
+            {
+                "scheduled_at": datetime.datetime(
+                    2000, 1, 1, tzinfo=datetime.timezone.utc
+                )
+            },
+            None,
+        ),
     ],
 )
 async def test_fetch_job(
@@ -93,7 +98,14 @@ async def test_fetch_job_spacial_case_none_lock(
         # We won't see this one because of the queue
         ({"queue": "queue_b"}, ["queue_a"]),
         # We won't see this one because of the scheduled date
-        ({"scheduled_at": conftest.aware_datetime(2100, 1, 1)}, None),
+        (
+            {
+                "scheduled_at": datetime.datetime(
+                    2100, 1, 1, tzinfo=datetime.timezone.utc
+                )
+            },
+            None,
+        ),
     ],
 )
 async def test_fetch_job_no_result(

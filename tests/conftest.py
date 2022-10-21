@@ -1,5 +1,4 @@
 import contextlib
-import datetime
 import functools
 import itertools
 import os
@@ -231,16 +230,3 @@ def deferred_job_factory(job_factory, job_manager):
         return await job_manager.defer_job_async(job)
 
     return factory
-
-
-def aware_datetime(
-    year, month, day, hour=0, minute=0, second=0, microsecond=0, tz_offset=None
-):
-    tzinfo = (
-        datetime.timezone(datetime.timedelta(hours=tz_offset))
-        if tz_offset
-        else datetime.timezone.utc
-    )
-    return datetime.datetime(
-        year, month, day, hour, minute, second, microsecond, tzinfo=tzinfo
-    )

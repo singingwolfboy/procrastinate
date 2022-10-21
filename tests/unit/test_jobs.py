@@ -4,13 +4,16 @@ import pytest
 
 from procrastinate import jobs
 
-from .. import conftest
-
 
 @pytest.mark.parametrize(
     "scheduled_at,context_scheduled_at",
     [
-        (conftest.aware_datetime(2000, 1, 1, tz_offset=1), "2000-01-01T00:00:00+01:00"),
+        (
+            datetime.datetime(
+                2000, 1, 1, tzinfo=datetime.timezone(datetime.timedelta(hours=1))
+            ),
+            "2000-01-01T00:00:00+01:00",
+        ),
         (None, None),
     ],
 )
