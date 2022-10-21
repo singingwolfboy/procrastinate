@@ -7,7 +7,8 @@ from migra import Migration
 from sqlalchemy.pool import NullPool
 from sqlbag import S
 
-from procrastinate import aiopg_connector, schema
+from procrastinate import schema
+from procrastinate.connector.aiopg import AiopgConnector
 
 
 @pytest.fixture
@@ -29,7 +30,7 @@ def schema_database(db_factory):
     db_factory(dbname=dbname)
 
     # apply the current procrastinate schema to the "procrastinate_schema" database
-    connector = aiopg_connector.AiopgConnector(dbname=dbname)
+    connector = AiopgConnector(dbname=dbname)
     connector.open()
     schema_manager = schema.SchemaManager(connector=connector)
     schema_manager.apply_schema()

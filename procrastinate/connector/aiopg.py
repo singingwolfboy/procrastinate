@@ -9,7 +9,8 @@ import psycopg2.errors
 import psycopg2.sql
 from psycopg2.extras import Json, RealDictCursor
 
-from procrastinate import connector, exceptions, sql
+from procrastinate import exceptions, sql
+from procrastinate.connector.base import BaseAsyncConnector
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def wrap_query_exceptions(coro: CoroutineFunction) -> CoroutineFunction:
     return wrapped
 
 
-class AiopgConnector(connector.BaseAsyncConnector):
+class AiopgConnector(BaseAsyncConnector):
     def __init__(
         self,
         *,

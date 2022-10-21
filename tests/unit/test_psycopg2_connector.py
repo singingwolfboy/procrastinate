@@ -1,11 +1,16 @@
 import psycopg2
 import pytest
 
-from procrastinate import exceptions, psycopg2_connector
+from procrastinate import exceptions
+from procrastinate.connector.psycopg2 import (
+    Psycopg2Connector,
+    wrap_exceptions,
+    wrap_query_exceptions,
+)
 
 
 def test_wrap_exceptions_wraps():
-    @psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func():
         raise psycopg2.DatabaseError
 
@@ -14,7 +19,7 @@ def test_wrap_exceptions_wraps():
 
 
 def test_wrap_exceptions_success():
-    @psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func(a, b):
         return a, b
 
@@ -25,7 +30,7 @@ def test_wrap_exceptions_success():
 def test_wrap_query_exceptions_reached_max_tries(mocker, pool_args, called_count):
     called = []
 
-    @psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func(connector):
         called.append(True)
         raise psycopg2.errors.AdminShutdown()
@@ -44,7 +49,7 @@ def test_wrap_query_exceptions_reached_max_tries(mocker, pool_args, called_count
 def test_wrap_query_exceptions_unhandled_exception(mocker):
     called = []
 
-    @psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func(connector):
         called.append(True)
         raise psycopg2.errors.OperationalError()
@@ -60,7 +65,7 @@ def test_wrap_query_exceptions_unhandled_exception(mocker):
 def test_wrap_query_exceptions_success(mocker):
     called = []
 
-    @psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func(connector, a, b):
         if len(called) < 2:
             called.append(True)
@@ -84,17 +89,17 @@ def test_wrap_query_exceptions_success(mocker):
     ],
 )
 def test_wrap_exceptions_applied(method_name):
-    connector = psycopg2_connector.Psycopg2Connector()
+    connector = Psycopg2Connector()
     assert getattr(connector, method_name)._exceptions_wrapped is True
 
 
 @pytest.fixture
 def mock_create_pool(mocker):
-    return mocker.patch.object(psycopg2_connector.Psycopg2Connector, "_create_pool")
+    return mocker.patch.object(Psycopg2Connector, "_create_pool")
 
 
 def test_open_no_pool_specified(mock_create_pool):
-    connector = psycopg2_connector.Psycopg2Connector()
+    connector = Psycopg2Connector()
 
     connector.open()
 
@@ -103,7 +108,7 @@ def test_open_no_pool_specified(mock_create_pool):
 
 
 def test_open_pool_argument_specified(mock_create_pool, mocker):
-    connector = psycopg2_connector.Psycopg2Connector()
+    connector = Psycopg2Connector()
 
     pool = mocker.MagicMock()
     connector.open(pool)
@@ -114,7 +119,7 @@ def test_open_pool_argument_specified(mock_create_pool, mocker):
 
 
 def test_get_pool():
-    connector = psycopg2_connector.Psycopg2Connector()
+    connector = Psycopg2Connector()
 
     with pytest.raises(exceptions.AppNotOpen):
         _ = connector.pool

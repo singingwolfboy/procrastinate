@@ -4,7 +4,8 @@ from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional
 
 import asyncpg
 
-from procrastinate import connector, exceptions
+from procrastinate import exceptions
+from procrastinate.connector.base import BaseAsyncConnector
 
 CoroutineFunction = Callable[..., Coroutine]
 
@@ -43,7 +44,7 @@ class AsyncpgQueryConverter:
         return tuple(args[e] for e in self.order)
 
 
-class AsyncpgConnector(connector.BaseAsyncConnector):
+class AsyncpgConnector(BaseAsyncConnector):
     def __init__(
         self,
         *,

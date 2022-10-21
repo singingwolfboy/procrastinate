@@ -4,7 +4,7 @@ import json
 import psycopg2.errors
 import pytest
 
-from procrastinate import psycopg2_connector
+from procrastinate.connector.psycopg2 import Psycopg2Connector
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def psycopg2_connector_factory(connection_params):
         json_dumps = kwargs.pop("json_dumps", None)
         json_loads = kwargs.pop("json_loads", None)
         connection_params.update(kwargs)
-        connector = psycopg2_connector.Psycopg2Connector(
+        connector = Psycopg2Connector(
             json_dumps=json_dumps, json_loads=json_loads, **connection_params
         )
         connectors.append(connector)

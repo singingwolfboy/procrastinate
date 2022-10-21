@@ -4,6 +4,8 @@ import json
 import time
 
 import procrastinate
+from procrastinate.connector.aiopg import AiopgConnector
+from procrastinate.connector.psycopg2 import Psycopg2Connector
 
 from .param import Param
 
@@ -26,14 +28,12 @@ json_dumps = functools.partial(json.dumps, default=encode)
 json_loads = functools.partial(json.loads, object_hook=decode)
 
 app = procrastinate.App(
-    connector=procrastinate.AiopgConnector(json_dumps=json_dumps, json_loads=json_loads)
+    connector=AiopgConnector(json_dumps=json_dumps, json_loads=json_loads)
 )
 app.open()
 
 sync_app = procrastinate.App(
-    connector=procrastinate.Psycopg2Connector(
-        json_dumps=json_dumps, json_loads=json_loads
-    )
+    connector=Psycopg2Connector(json_dumps=json_dumps, json_loads=json_loads)
 )
 sync_app.open()
 
@@ -108,7 +108,7 @@ def sleep_and_write(sleep, write_before, write_after):
 
 
 cron_app = procrastinate.App(
-    connector=procrastinate.AiopgConnector(json_dumps=json_dumps, json_loads=json_loads)
+    connector=AiopgConnector(json_dumps=json_dumps, json_loads=json_loads)
 )
 
 

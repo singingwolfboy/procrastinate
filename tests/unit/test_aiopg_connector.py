@@ -3,12 +3,17 @@ import collections
 import psycopg2
 import pytest
 
-from procrastinate import aiopg_connector, exceptions
+from procrastinate import exceptions
+from procrastinate.connector.aiopg import (
+    AiopgConnector,
+    wrap_exceptions,
+    wrap_query_exceptions,
+)
 
 
 @pytest.fixture
 def connector():
-    return aiopg_connector.AiopgConnector()
+    return AiopgConnector()
 
 
 async def test_adapt_pool_args_on_connect(mocker):
@@ -17,7 +22,7 @@ async def test_adapt_pool_args_on_connect(mocker):
     async def on_connect(connection):
         called.append(connection)
 
-    args = aiopg_connector.AiopgConnector._adapt_pool_args(
+    args = AiopgConnector._adapt_pool_args(
         pool_args={"on_connect": on_connect}, json_loads=None
     )
 
@@ -30,7 +35,7 @@ async def test_adapt_pool_args_on_connect(mocker):
 
 
 async def test_wrap_exceptions_wraps():
-    @aiopg_connector.wrap_exceptions
+    @wrap_exceptions
     async def corofunc():
         raise psycopg2.DatabaseError
 
@@ -41,7 +46,7 @@ async def test_wrap_exceptions_wraps():
 
 
 async def test_wrap_exceptions_success():
-    @aiopg_connector.wrap_exceptions
+    @wrap_exceptions
     async def corofunc(a, b):
         return a, b
 
@@ -60,7 +65,7 @@ async def test_wrap_query_exceptions_reached_max_tries(
 ):
     called = []
 
-    @aiopg_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     async def corofunc(connector):
         called.append(True)
         raise psycopg2.errors.OperationalError(
@@ -86,7 +91,7 @@ async def test_wrap_query_exceptions_reached_max_tries(
 async def test_wrap_query_exceptions_unhandled_exception(mocker, exception_class):
     called = []
 
-    @aiopg_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     async def corofunc(connector):
         called.append(True)
         raise exception_class("foo")
@@ -103,7 +108,7 @@ async def test_wrap_query_exceptions_unhandled_exception(mocker, exception_class
 async def test_wrap_query_exceptions_success(mocker):
     called = []
 
-    @aiopg_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     async def corofunc(connector, a, b):
         if len(called) < 2:
             called.append(True)
@@ -155,7 +160,7 @@ def fake_connector(mocker):
         def terminate(self):
             pass
 
-    class FakeConnector(aiopg_connector.AiopgConnector):
+    class FakeConnector(AiopgConnector):
         create_pool_called = False
         create_pool_args = None
 

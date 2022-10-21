@@ -9,7 +9,8 @@ import psycopg2.errors
 import psycopg2.pool
 from psycopg2.extras import Json, RealDictCursor
 
-from procrastinate import connector, exceptions
+from procrastinate import exceptions
+from procrastinate.connector import BaseConnector
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,7 @@ def wrap_query_exceptions(func: Callable) -> Callable:
 PERCENT_PATTERN = re.compile(r"%(?![\(s])")
 
 
-class Psycopg2Connector(connector.BaseConnector):
+class Psycopg2Connector(BaseConnector):
     @wrap_exceptions
     def __init__(
         self,
