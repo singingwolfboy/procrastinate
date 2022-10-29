@@ -16,6 +16,22 @@ def connector():
     return AsyncpgConnector()
 
 
+async def test_adapt_pool_args_init(mocker):
+    called = []
+
+    async def init(connection):
+        called.append(connection)
+
+    args = AsyncpgConnector._adapt_pool_args(pool_args={"init": init})
+
+    assert args["init"] is not init
+
+    connection = mocker.AsyncMock()
+    await args["init"](connection)
+
+    assert called == [connection]
+
+
 async def test_wrap_exceptions_wraps():
     @wrap_exceptions
     async def corofunc():
@@ -117,17 +133,6 @@ def test_wrap_exceptions_applied(method_name, connector):
     ), f"{method_name} is unwrapped"
 
 
-async def test_listen_notify_pool_one_connection(mocker, caplog, connector):
-    pool = mocker.MagicMock(spec=asyncpg.Pool)
-    pool.get_max_size.return_value = 1
-    await connector.open_async(pool)
-    caplog.clear()
-
-    await connector.listen_notify(None, None)
-
-    assert {e.action for e in caplog.records} == {"listen_notify_disabled"}
-
-
 # mocker and async don't play very well together (yet), so it's easier to create
 # stubs
 @pytest.fixture
@@ -144,7 +149,7 @@ def fake_connector(mocker):
         json_dumps = None
         json_loads = None
 
-        async def _create_pool(self, pool_args, json_dumps, json_loads):
+        async def _create_pool(self, pool_args, json_dumps=None, json_loads=None):
             self.create_pool_called = True
             self.create_pool_args = pool_args
             self.json_dumps = json_dumps

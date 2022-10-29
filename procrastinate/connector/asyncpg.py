@@ -132,8 +132,8 @@ class AsyncpgConnector(BaseAsyncConnector):
     @staticmethod
     def _adapt_pool_args(
         pool_args: Dict[str, Any],
-        json_dumps: Optional[Callable],
-        json_loads: Optional[Callable],
+        json_dumps: Optional[Callable] = None,
+        json_loads: Optional[Callable] = None,
     ) -> Dict[str, Any]:
         """
         Adapt the pool args for ``asyncpg``, using sensible defaults for Procrastinate.
@@ -203,7 +203,7 @@ class AsyncpgConnector(BaseAsyncConnector):
     async def __del__(self):
         if self._pool and not self._pool_externally_set:
             # Consider https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for
-            await self._pool.close()
+            await asyncio.wait_for(self._pool.close(), 3)
 
     @wrap_exceptions
     @wrap_query_exceptions
@@ -251,19 +251,19 @@ class AsyncpgConnector(BaseAsyncConnector):
     async def listen_notify(
         self, event: asyncio.Event, channels: Iterable[str]
     ) -> None:
-        # We need to acquire a dedicated connection, and use the listen
-        # query
-        if self.pool.get_max_size() == 1:
-            logger.warning(
-                "Listen/Notify capabilities disabled because maximum pool size"
-                "is set to 1",
-                extra={"action": "listen_notify_disabled"},
-            )
-            return
-
         async def listen_callback(conn, pid, channel, payload):
             event.set()
 
-        async with self.pool.acquire() as conn:
+        async def setup(conn):
             for channel in channels:
                 await conn.add_listener(channel, listen_callback)
+
+        # This is an awful hack, because the `Pool` public API does not allow
+        # you to add a `setup` function after the pool object has already been
+        # created. So we'll just reach into the private API and make it work.
+        self.pool._setup = setup  # type: ignore
+        for holder in self.pool._holders:  # type: ignore
+            holder._setup = setup
+
+        # Initial set() lets caller know that we're ready to listen
+        event.set()
