@@ -16,6 +16,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from procrastinate import app as app_module
 from procrastinate import blueprints, builtin_tasks, jobs, schema, testing
 from procrastinate.connector.aiopg import AiopgConnector
+from procrastinate.connector.asyncpg import AsyncpgConnector
 from procrastinate.connector.psycopg2 import Psycopg2Connector
 from procrastinate.contrib.sqlalchemy.connector.psycopg2 import (
     SQLAlchemyPsycopg2Connector,
@@ -109,7 +110,7 @@ def sqlalchemy_engine_dsn(setup_db, db_factory):
 
 
 @pytest.fixture
-async def connection(connection_params):
+async def connection(connection_params):  # TODO: rename to `aiopg_connection` ?
     async with aiopg.connect(**connection_params) as connection:
         yield connection
 
@@ -117,6 +118,11 @@ async def connection(connection_params):
 @pytest.fixture
 async def not_opened_aiopg_connector(connection_params):
     yield AiopgConnector(**connection_params)
+
+
+@pytest.fixture
+def not_opened_asyncpg_connector(connection_params):
+    yield AsyncpgConnector(**connection_params)
 
 
 @pytest.fixture
@@ -134,6 +140,13 @@ async def aiopg_connector(not_opened_aiopg_connector):
     await not_opened_aiopg_connector.open_async()
     yield not_opened_aiopg_connector
     await not_opened_aiopg_connector.close_async()
+
+
+@pytest.fixture
+async def asyncpg_connector(not_opened_asyncpg_connector):
+    await not_opened_asyncpg_connector.open_async()
+    yield not_opened_asyncpg_connector
+    await not_opened_asyncpg_connector.close_async()
 
 
 @pytest.fixture

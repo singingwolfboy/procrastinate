@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import json
 import logging
 from typing import Any, Callable, Coroutine, Dict, Iterable, List, Optional
 
@@ -73,15 +74,23 @@ def wrap_query_exceptions(coro: CoroutineFunction) -> CoroutineFunction:
 
 
 class AsyncpgQueryConverter:
-    def __init__(self):
-        self.order = []
+    def __init__(self, arg_dict: Dict[str, Any]):
+        self.order: List[str] = []
+        self.arg_dict = arg_dict
 
-    def __getitem__(self, key):
-        self.order.append(key)
-        return f"${len(self.order)}"
+    def __getitem__(self, key: str):
+        if key in self.arg_dict:
+            # We need to convert this, so make a new positional query arg
+            self.order.append(key)
+            return f"${len(self.order)}"
+        else:
+            # We don't need to convert this, so put it back
+            # as a named argument
+            return f"%({key})s"
 
-    def convert_args(self, args):
-        return tuple(args[e] for e in self.order)
+    @property
+    def positional_args(self):
+        return tuple(self.arg_dict[arg_name] for arg_name in self.order)
 
 
 class AsyncpgConnector(BaseAsyncConnector):
@@ -115,8 +124,45 @@ class AsyncpgConnector(BaseAsyncConnector):
         self._pool_externally_set: bool = False
         self.json_dumps = json_dumps
         self.json_loads = json_loads
-        self._pool_args = kwargs
+        self._pool_args = self._adapt_pool_args(
+            kwargs, json_dumps=json_dumps, json_loads=json_loads
+        )
         self._lock: Optional[asyncio.Lock] = None
+
+    @staticmethod
+    def _adapt_pool_args(
+        pool_args: Dict[str, Any],
+        json_dumps: Optional[Callable],
+        json_loads: Optional[Callable],
+    ) -> Dict[str, Any]:
+        """
+        Adapt the pool args for ``asyncpg``, using sensible defaults for Procrastinate.
+        """
+        if "dbname" in pool_args and "database" in pool_args:
+            raise exceptions.ConnectorException(
+                "Can not pass both `dbname` and `database` to `AsyncpgConnector`"
+            )
+        dbname = pool_args.get("dbname")
+        if dbname:
+            pool_args["database"] = dbname
+            del pool_args["dbname"]
+
+        extra_init = pool_args.get("init", None)
+
+        async def init(conn):
+            for json_type_name in ("json", "jsonb"):
+                await conn.set_type_codec(
+                    json_type_name,
+                    encoder=json_dumps or json.dumps,
+                    decoder=json_loads or json.loads,
+                    schema="pg_catalog",
+                )
+            if extra_init:
+                await extra_init(conn)
+
+        pool_args["init"] = init
+
+        return pool_args
 
     @property
     def pool(self) -> asyncpg.Pool:
@@ -131,23 +177,12 @@ class AsyncpgConnector(BaseAsyncConnector):
             self._pool_externally_set = True
             self._pool = pool
         else:
-            self._pool = await self._create_pool(
-                self._pool_args, self.json_dumps, self.json_loads
-            )
+            self._pool = await self._create_pool(self._pool_args)
 
     @staticmethod
     @wrap_exceptions
-    async def _create_pool(
-        pool_args: Dict[str, Any], json_dumps, json_loads
-    ) -> asyncpg.Pool:
-        extra_init = pool_args.get("init", None)
-
-        async def init(conn):
-            conn.set_type_codec("json", encoder=json_dumps, decoder=json_loads)
-            if extra_init:
-                await extra_init(conn)
-
-        pool = await asyncpg.create_pool(init=init, **pool_args)
+    async def _create_pool(pool_args: Dict[str, Any]) -> asyncpg.Pool:
+        pool = await asyncpg.create_pool(**pool_args)
         if not pool:
             # just to make mypy happy; see
             # https://github.com/bryanforbes/asyncpg-stubs/issues/120
@@ -173,11 +208,11 @@ class AsyncpgConnector(BaseAsyncConnector):
     @wrap_exceptions
     @wrap_query_exceptions
     async def execute_query_async(self, query: str, **arguments: Any) -> None:
-        converter = AsyncpgQueryConverter()
+        converter = AsyncpgQueryConverter(arguments)
         converted_query = query % converter
 
         async with self.pool.acquire() as conn:
-            args = converter.convert_args(arguments)
+            args = converter.positional_args
             await conn.execute(converted_query, *args)
 
     @wrap_exceptions
@@ -185,11 +220,11 @@ class AsyncpgConnector(BaseAsyncConnector):
     async def execute_query_one_async(
         self, query: str, **arguments: Any
     ) -> Dict[str, Any]:
-        converter = AsyncpgQueryConverter()
+        converter = AsyncpgQueryConverter(arguments)
         converted_query = query % converter
 
         async with self.pool.acquire() as conn:
-            args = converter.convert_args(arguments)
+            args = converter.positional_args
             row_record = await conn.fetchrow(converted_query, *args)
             if not row_record:
                 raise ValueError("No row returned for execute_query_one_async")
@@ -200,11 +235,11 @@ class AsyncpgConnector(BaseAsyncConnector):
     async def execute_query_all_async(
         self, query: str, **arguments: Any
     ) -> List[Dict[str, Any]]:
-        converter = AsyncpgQueryConverter()
+        converter = AsyncpgQueryConverter(arguments)
         converted_query = query % converter
 
         async with self.pool.acquire() as conn:
-            args = converter.convert_args(arguments)
+            args = converter.positional_args
             # consider using a cursor instead
             rows = await conn.fetch(converted_query, *args)
 
