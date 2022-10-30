@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "${{ matrix.python-version }}"
 
-      - run: pip install .[aiopg,django,sqlalchemy]
+      - run: pip install .[test]
 
       - name: Run tests
         run: scripts/tests

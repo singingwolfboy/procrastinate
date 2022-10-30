@@ -31,10 +31,23 @@ dependencies = [
 
 [project.optional-dependencies]
 django = ["django>=2.2"]
-sqlalchemy = ["sqlalchemy~=1.4"]
+sqlalchemy = ["SQLAlchemy"]
 psycopg2 = ["psycopg2-binary"]
 aiopg = ["aiopg", "psycopg2-binary"]
 asyncpg = ["asyncpg"]
+
+test = [
+    "pytest-asyncio",
+    "pytest-click",
+    "pytest-cov",
+    "pytest-django",
+    "pytest-mock",
+    "django>=2.2",
+    "SQLAlchemy",
+    "psycopg2-binary",
+    "aiopg",
+    "asyncpg",
+]
 
 dev = [
     "black",
@@ -51,7 +64,6 @@ dev = [
     "sphinx-autodoc-typehints",
     "sphinx-github-changelog",
     "sphinxcontrib-programoutput",
-    "sqlalchemy[mypy]",
     "types-croniter",
     "types-psycopg2",
     "types-python-dateutil",
