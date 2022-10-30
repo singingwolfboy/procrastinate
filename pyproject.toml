@@ -42,6 +42,7 @@ test = [
     "pytest-cov",
     "pytest-django",
     "pytest-mock",
+    "migra",
     "django>=2.2",
     "SQLAlchemy",
     "psycopg2-binary",
