@@ -129,15 +129,6 @@ async def test_close_async(asyncpg_connector):
     assert asyncpg_connector._pool is None
 
 
-async def test_get_connection_no_psycopg2_adapter_registration(
-    asyncpg_connector_factory, mocker
-):
-    register_adapter = mocker.patch("psycopg2.extensions.register_adapter")
-    connector = await asyncpg_connector_factory()
-    await connector.open_async()
-    assert not register_adapter.called
-
-
 async def test_listen_notify(asyncpg_connector):
     channel = "somechannel"
     event = asyncio.Event()
