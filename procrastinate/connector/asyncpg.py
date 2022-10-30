@@ -80,9 +80,13 @@ class AsyncpgQueryConverter:
 
     def __getitem__(self, key: str):
         if key in self.arg_dict:
-            # We need to convert this, so make a new positional query arg
-            self.order.append(key)
-            return f"${len(self.order)}"
+            # We need to convert this. Have we done so already?
+            if key in self.order:
+                return f"${self.order.index(key) + 1}"
+            else:
+                # Make a new positional query arg
+                self.order.append(key)
+                return f"${len(self.order)}"
         else:
             # We don't need to convert this, so put it back
             # as a named argument

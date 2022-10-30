@@ -135,6 +135,11 @@ def not_opened_sqlalchemy_psycopg2_connector(sqlalchemy_engine_dsn):
     yield SQLAlchemyPsycopg2Connector(dsn=sqlalchemy_engine_dsn, echo=True)
 
 
+@pytest.fixture(params=["asyncpg", "aiopg"])
+def not_opened_async_connector(request):
+    return request.getfixturevalue(f"not_opened_{request.param}_connector")
+
+
 @pytest.fixture
 async def aiopg_connector(not_opened_aiopg_connector):
     await not_opened_aiopg_connector.open_async()
@@ -161,6 +166,11 @@ def sqlalchemy_psycopg2_connector(not_opened_sqlalchemy_psycopg2_connector):
     not_opened_sqlalchemy_psycopg2_connector.open()
     yield not_opened_sqlalchemy_psycopg2_connector
     not_opened_sqlalchemy_psycopg2_connector.close()
+
+
+@pytest.fixture(params=["asyncpg", "aiopg"])
+def async_connector(request):
+    return request.getfixturevalue(f"{request.param}_connector")
 
 
 @pytest.fixture

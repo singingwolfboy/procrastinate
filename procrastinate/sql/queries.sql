@@ -25,9 +25,9 @@ SELECT job.id, status, task_name, lock, queueing_lock, args, scheduled_at, queue
       ON event.job_id = job.id
 WHERE event.type = 'started'
   AND job.status = 'doing'
-  AND event.at < NOW() - (%(nb_seconds)s || 'SECOND')::INTERVAL
-  AND (%(queue)s IS NULL OR job.queue_name = %(queue)s)
-  AND (%(task_name)s IS NULL OR job.task_name = %(task_name)s)
+  AND event.at < NOW() - (%(nb_seconds)s::INTEGER || 'SECOND')::INTERVAL
+  AND (%(queue)s::TEXT IS NULL OR job.queue_name = %(queue)s::TEXT)
+  AND (%(task_name)s::TEXT IS NULL OR job.task_name = %(task_name)s::TEXT)
 GROUP BY job.id
 
 -- delete_old_jobs --
@@ -41,9 +41,9 @@ WHERE id IN (
               ON job.id = event.job_id
             ORDER BY job.id, event.at DESC
     ) AS job
-    WHERE job.status in %(statuses)s
-      AND (%(queue)s IS NULL OR job.queue_name = %(queue)s)
-      AND latest_at < NOW() - (%(nb_hours)s || 'HOUR')::INTERVAL
+    WHERE job.status = ANY(%(statuses)s::procrastinate_job_status[])
+      AND (%(queue)s::TEXT IS NULL OR job.queue_name = %(queue)s::TEXT)
+      AND latest_at < NOW() - (%(nb_hours)s::INTEGER || 'HOUR')::INTERVAL
 )
 
 -- finish_job --

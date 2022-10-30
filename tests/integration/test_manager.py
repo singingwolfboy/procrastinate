@@ -7,14 +7,14 @@ from procrastinate import exceptions, jobs, manager
 
 
 @pytest.fixture
-def pg_job_manager(aiopg_connector):
-    return manager.JobManager(connector=aiopg_connector)
+def pg_job_manager(async_connector):
+    return manager.JobManager(connector=async_connector)
 
 
 @pytest.fixture
-def get_all(aiopg_connector):
+def get_all(async_connector):
     async def f(table, *fields):
-        return await aiopg_connector.execute_query_all_async(
+        return await async_connector.execute_query_all_async(
             f"SELECT {', '.join(fields)} FROM {table}"
         )
 
@@ -125,12 +125,12 @@ async def test_fetch_job_no_result(
     ],
 )
 async def test_get_stalled_jobs_yes(
-    pg_job_manager, fetched_job_factory, aiopg_connector, filter_args
+    pg_job_manager, fetched_job_factory, async_connector, filter_args
 ):
     job = await fetched_job_factory(queue="queue_a", task_name="task_1")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '35 minutes'"
         f"WHERE job_id={job.id}"
     )
@@ -148,12 +148,12 @@ async def test_get_stalled_jobs_yes(
     ],
 )
 async def test_get_stalled_jobs_no(
-    pg_job_manager, fetched_job_factory, aiopg_connector, filter_args
+    pg_job_manager, fetched_job_factory, async_connector, filter_args
 ):
     job = await fetched_job_factory(queue="queue_a", task_name="task_1")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '35 minutes'"
         f"WHERE job_id={job.id}"
     )
@@ -165,13 +165,13 @@ async def test_get_stalled_jobs_no(
 async def test_delete_old_jobs_job_todo(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     deferred_job_factory,
 ):
     job = await deferred_job_factory(queue="queue_a")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -183,13 +183,13 @@ async def test_delete_old_jobs_job_todo(
 async def test_delete_old_jobs_job_doing(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     fetched_job_factory,
 ):
     job = await fetched_job_factory(queue="queue_a")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -217,7 +217,7 @@ async def test_delete_old_jobs_job_doing(
 async def test_delete_old_jobs_parameters(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     status,
     nb_hours,
     queue,
@@ -231,7 +231,7 @@ async def test_delete_old_jobs_parameters(
     await pg_job_manager.finish_job(job, status=status, delete_job=False)
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -303,10 +303,10 @@ async def test_retry_job(pg_job_manager, fetched_job_factory):
     assert job2.attempts == job1.attempts + 1
 
 
-async def test_enum_synced(aiopg_connector):
+async def test_enum_synced(async_connector):
     # If this test breaks, it means you've changed either the task_status PG enum
     # or the python procrastinate.jobs.Status Enum without updating the other.
-    pg_enum_rows = await aiopg_connector.execute_query_all_async(
+    pg_enum_rows = await async_connector.execute_query_all_async(
         """SELECT e.enumlabel FROM pg_enum e
                JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = %(type_name)s""",
         type_name="procrastinate_job_status",
