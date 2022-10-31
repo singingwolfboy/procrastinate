@@ -488,7 +488,7 @@ async def test_list_tasks_dict(fixture_jobs, pg_job_manager):
 
 
 async def test_list_locks_dict(fixture_jobs, job_factory, pg_job_manager):
-    pg_job_manager.defer_job_async(
+    await pg_job_manager.defer_job_async(
         job=job_factory(
             queue="q3",
             lock=None,
