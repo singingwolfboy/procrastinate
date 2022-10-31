@@ -26,7 +26,7 @@ def wrap_exceptions(coro: CoroutineFunction) -> CoroutineFunction:
         try:
             return await coro(*args, **kwargs)
         except asyncpg.UniqueViolationError as exc:
-            raise exceptions.UniqueViolation(constraint_name=exc.diag.constraint_name)
+            raise exceptions.UniqueViolation(constraint_name=exc.constraint_name)
         except asyncpg.PostgresError as exc:
             raise exceptions.ConnectorException from exc
 
