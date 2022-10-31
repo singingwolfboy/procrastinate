@@ -101,7 +101,7 @@ async def test_get_stalled_jobs_stalled(job_manager, job_factory, connector):
 
 @pytest.mark.parametrize(
     "include_error, statuses",
-    [(False, ("succeeded",)), (True, ("succeeded", "failed"))],
+    [(False, ["succeeded"]), (True, ["succeeded", "failed"])],
 )
 async def test_delete_old_jobs(
     job_manager, job_factory, connector, include_error, statuses, mocker
