@@ -1,5 +1,4 @@
 import contextlib
-import datetime
 import functools
 import itertools
 import os
@@ -14,13 +13,13 @@ import pytest
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
-from procrastinate import aiopg_connector as aiopg_connector_module
 from procrastinate import app as app_module
-from procrastinate import blueprints, builtin_tasks, jobs
-from procrastinate import psycopg2_connector as psycopg2_connector_module
-from procrastinate import schema, testing
-from procrastinate.contrib.sqlalchemy import (
-    psycopg2_connector as sqlalchemy_psycopg2_connector_module,
+from procrastinate import blueprints, builtin_tasks, jobs, schema, testing
+from procrastinate.connector.aiopg import AiopgConnector
+from procrastinate.connector.asyncpg import AsyncpgConnector
+from procrastinate.connector.psycopg2 import Psycopg2Connector
+from procrastinate.contrib.sqlalchemy.connector.psycopg2 import (
+    SQLAlchemyPsycopg2Connector,
 )
 
 # Just ensuring the tests are not polluted by environment
@@ -84,7 +83,7 @@ def setup_db():
     dbname = "procrastinate_test_template"
     db_create(dbname=dbname)
 
-    connector = aiopg_connector_module.AiopgConnector(dbname=dbname)
+    connector = AiopgConnector(dbname=dbname)
     connector.open()
     schema_manager = schema.SchemaManager(connector=connector)
     schema_manager.apply_schema()
@@ -111,26 +110,34 @@ def sqlalchemy_engine_dsn(setup_db, db_factory):
 
 
 @pytest.fixture
-async def connection(connection_params):
+async def connection(connection_params):  # TODO: rename to `aiopg_connection` ?
     async with aiopg.connect(**connection_params) as connection:
         yield connection
 
 
 @pytest.fixture
 async def not_opened_aiopg_connector(connection_params):
-    yield aiopg_connector_module.AiopgConnector(**connection_params)
+    yield AiopgConnector(**connection_params)
+
+
+@pytest.fixture
+def not_opened_asyncpg_connector(connection_params):
+    yield AsyncpgConnector(**connection_params)
 
 
 @pytest.fixture
 def not_opened_psycopg2_connector(connection_params):
-    yield psycopg2_connector_module.Psycopg2Connector(**connection_params)
+    yield Psycopg2Connector(**connection_params)
 
 
 @pytest.fixture
 def not_opened_sqlalchemy_psycopg2_connector(sqlalchemy_engine_dsn):
-    yield sqlalchemy_psycopg2_connector_module.SQLAlchemyPsycopg2Connector(
-        dsn=sqlalchemy_engine_dsn, echo=True
-    )
+    yield SQLAlchemyPsycopg2Connector(dsn=sqlalchemy_engine_dsn, echo=True)
+
+
+@pytest.fixture(params=["asyncpg", "aiopg"])
+def not_opened_async_connector(request):
+    return request.getfixturevalue(f"not_opened_{request.param}_connector")
 
 
 @pytest.fixture
@@ -138,6 +145,13 @@ async def aiopg_connector(not_opened_aiopg_connector):
     await not_opened_aiopg_connector.open_async()
     yield not_opened_aiopg_connector
     await not_opened_aiopg_connector.close_async()
+
+
+@pytest.fixture
+async def asyncpg_connector(not_opened_asyncpg_connector):
+    await not_opened_asyncpg_connector.open_async()
+    yield not_opened_asyncpg_connector
+    await not_opened_asyncpg_connector.close_async()
 
 
 @pytest.fixture
@@ -152,6 +166,11 @@ def sqlalchemy_psycopg2_connector(not_opened_sqlalchemy_psycopg2_connector):
     not_opened_sqlalchemy_psycopg2_connector.open()
     yield not_opened_sqlalchemy_psycopg2_connector
     not_opened_sqlalchemy_psycopg2_connector.close()
+
+
+@pytest.fixture(params=["asyncpg", "aiopg"])
+def async_connector(request):
+    return request.getfixturevalue(f"{request.param}_connector")
 
 
 @pytest.fixture
@@ -234,16 +253,3 @@ def deferred_job_factory(job_factory, job_manager):
         return await job_manager.defer_job_async(job)
 
     return factory
-
-
-def aware_datetime(
-    year, month, day, hour=0, minute=0, second=0, microsecond=0, tz_offset=None
-):
-    tzinfo = (
-        datetime.timezone(datetime.timedelta(hours=tz_offset))
-        if tz_offset
-        else datetime.timezone.utc
-    )
-    return datetime.datetime(
-        year, month, day, hour, minute, second, microsecond, tzinfo=tzinfo
-    )

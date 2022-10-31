@@ -130,7 +130,6 @@ class JobManager:
         ``Optional[jobs.Job]``
             None if no suitable job was found. The job otherwise.
         """
-
         row = await self.connector.execute_query_one_async(
             query=sql.queries["fetch_job"], queues=queues
         )
@@ -202,7 +201,7 @@ class JobManager:
             query=sql.queries["delete_old_jobs"],
             nb_hours=nb_hours,
             queue=queue,
-            statuses=tuple(statuses),
+            statuses=statuses,
         )
 
     async def finish_job(

@@ -1,64 +1,19 @@
-import functools
 import re
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
-import psycopg2.errors
 import sqlalchemy
-from psycopg2.extras import Json
 
-from procrastinate import connector, exceptions
-
-
-def wrap_exceptions(func: Callable) -> Callable:
-    """
-    Wrap SQLAlchemy errors as connector exceptions.
-    """
-
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except sqlalchemy.exc.IntegrityError as exc:
-            if isinstance(exc.orig, psycopg2.errors.UniqueViolation):
-                raise exceptions.UniqueViolation(
-                    constraint_name=exc.orig.diag.constraint_name
-                )
-            raise exceptions.ConnectorException from exc
-        except sqlalchemy.exc.SQLAlchemyError as exc:
-            raise exceptions.ConnectorException from exc
-
-    # Attaching a custom attribute to ease testability and make the
-    # decorator more introspectable
-    wrapped._exceptions_wrapped = True  # type: ignore
-    return wrapped
-
-
-def wrap_query_exceptions(func: Callable) -> Callable:
-    """
-    Detect "admin shutdown" errors and retry once.
-
-    This is to handle the case where the database connection (obtained from the pool)
-    was actually closed by the server. In this case, SQLAlchemy raises a ``DBAPIError``
-    with ``connection_invalidated`` set to ``True``, and also invalidates the rest of
-    the connection pool. So we just retry once, to get a fresh connection.
-    """
-
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except sqlalchemy.exc.DBAPIError as exc:
-            if exc.connection_invalidated:
-                return func(*args, **kwargs)
-            raise exc
-
-    return wrapped
-
+from procrastinate import exceptions
+from procrastinate.connector.base import BaseConnector
+from procrastinate.contrib.sqlalchemy.utils import (
+    wrap_exceptions,
+    wrap_query_exceptions,
+)
 
 PERCENT_PATTERN = re.compile(r"%(?![\(s])")
 
 
-class SQLAlchemyPsycopg2Connector(connector.BaseConnector):
+class SQLAlchemyConnector(BaseConnector):
     def __init__(
         self,
         *,
@@ -68,9 +23,9 @@ class SQLAlchemyPsycopg2Connector(connector.BaseConnector):
         **kwargs: Any,
     ):
         """
-        Synchronous connector based on SQLAlchemy with Psycopg2.
+        Synchronous connector based on SQLAlchemy.
 
-        This is used if you want your ``.defer()`` calls to be purely synchronous, not
+        This is used if you want your ``.defer()`` calls to be purely synchronous, not
         asynchronous with a sync wrapper. You may need this if your program is
         multi-threaded and doen't handle async loops well
         (see `discussion-sync-defer`).
@@ -141,12 +96,7 @@ class SQLAlchemyPsycopg2Connector(connector.BaseConnector):
         return self._engine
 
     def _wrap_json(self, arguments: Dict[str, Any]):
-        return {
-            key: Json(value, dumps=self.json_dumps)
-            if isinstance(value, dict)
-            else value
-            for key, value in arguments.items()
-        }
+        return arguments
 
     @wrap_exceptions
     @wrap_query_exceptions

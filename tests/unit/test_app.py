@@ -1,12 +1,11 @@
 import asyncio
 import collections
+import datetime
 
 import pytest
 
 from procrastinate import app as app_module
 from procrastinate import exceptions, tasks, testing
-
-from .. import conftest
 
 
 def task_func():
@@ -71,7 +70,7 @@ def test_from_path(mocker):
 
 
 def test_app_configure_task(app):
-    scheduled_at = conftest.aware_datetime(2000, 1, 1)
+    scheduled_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
     job = app.configure_task(
         name="my_name",
         queue="marsupilami",
@@ -92,7 +91,7 @@ def test_app_configure_task_unknown_allowed(app):
     def my_name(a):
         pass
 
-    scheduled_at = conftest.aware_datetime(2000, 1, 1)
+    scheduled_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
     job = app.configure_task(
         name="my_name", lock="sher", schedule_at=scheduled_at, task_kwargs={"a": 1}
     ).job

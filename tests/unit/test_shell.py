@@ -1,9 +1,9 @@
+import datetime
+
 import pytest
 
 from procrastinate import manager
 from procrastinate import shell as shell_module
-
-from .. import conftest
 
 
 @pytest.fixture
@@ -25,7 +25,7 @@ def test_list_jobs(shell, connector, capsys):
         "lock1",
         "queueing_lock1",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue1",
     )
     connector.defer_job_one(
@@ -33,7 +33,7 @@ def test_list_jobs(shell, connector, capsys):
         "lock2",
         "queueing_lock2",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue2",
     )
 
@@ -64,7 +64,7 @@ def test_list_jobs_filters(shell, connector, capsys):
         "lock1",
         "queueing_lock1",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue1",
     )
     connector.defer_job_one(
@@ -72,7 +72,7 @@ def test_list_jobs_filters(shell, connector, capsys):
         "lock2",
         "queueing_lock2",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue2",
     )
 
@@ -102,7 +102,7 @@ def test_list_jobs_details(shell, connector, capsys):
         "lock1",
         "queueing_lock1",
         {"x": 11},
-        conftest.aware_datetime(1000, 1, 1),
+        datetime.datetime(1000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue1",
     )
     connector.defer_job_one(
@@ -110,7 +110,7 @@ def test_list_jobs_details(shell, connector, capsys):
         "lock2",
         "queueing_lock2",
         {"y": 22},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue2",
     )
 
@@ -274,7 +274,7 @@ def test_retry(shell, connector, capsys):
         "lock",
         "queueing_lock",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue",
     )
     connector.set_job_status_run(1, "failed")
@@ -294,7 +294,7 @@ def test_cancel(shell, connector, capsys):
         "lock",
         "queueing_lock",
         {},
-        conftest.aware_datetime(2000, 1, 1),
+        datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
         "queue",
     )
 

@@ -3,13 +3,15 @@ import pytest
 import sqlalchemy
 
 from procrastinate import exceptions
-from procrastinate.contrib.sqlalchemy import (
-    psycopg2_connector as sqlalchemy_psycopg2_connector,
+from procrastinate.contrib.sqlalchemy import wrap_query_exceptions
+from procrastinate.contrib.sqlalchemy.connector.psycopg2 import (
+    SQLAlchemyPsycopg2Connector,
+    wrap_exceptions,
 )
 
 
 def test_wrap_exceptions_wraps():
-    @sqlalchemy_psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func():
         raise sqlalchemy.exc.OperationalError(
             statement="SELECT 1", params={}, orig=psycopg2.DatabaseError()
@@ -23,7 +25,7 @@ def test_wrap_exceptions_unique_violation(mocker):
     class UniqueViolation(psycopg2.errors.UniqueViolation):
         diag = None
 
-    @sqlalchemy_psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func():
         exc = UniqueViolation()
         exc.diag = mocker.Mock(constraint_name="constraint name")
@@ -36,7 +38,7 @@ def test_wrap_exceptions_unique_violation(mocker):
 
 
 def test_wrap_exceptions_integrity_error_not_unique(mocker):
-    @sqlalchemy_psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func():
         exc = Exception()
         exc.diag = mocker.Mock(constraint_name="constraint name")
@@ -47,7 +49,7 @@ def test_wrap_exceptions_integrity_error_not_unique(mocker):
 
 
 def test_wrap_exceptions_success():
-    @sqlalchemy_psycopg2_connector.wrap_exceptions
+    @wrap_exceptions
     def func(a, b):
         return a, b
 
@@ -57,7 +59,7 @@ def test_wrap_exceptions_success():
 def test_wrap_query_exceptions_retry():
     call_count = 0
 
-    @sqlalchemy_psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func():
         nonlocal call_count
         call_count += 1
@@ -77,7 +79,7 @@ def test_wrap_query_exceptions_retry():
 def test_wrap_query_exceptions_unhandled_exception():
     call_count = 0
 
-    @sqlalchemy_psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func():
         nonlocal call_count
         call_count += 1
@@ -96,7 +98,7 @@ def test_wrap_query_exceptions_unhandled_exception():
 def test_wrap_query_exceptions_success(mocker):
     call_count = 0
 
-    @sqlalchemy_psycopg2_connector.wrap_query_exceptions
+    @wrap_query_exceptions
     def func(a, b):
         nonlocal call_count
         call_count += 1
@@ -124,19 +126,17 @@ def test_wrap_query_exceptions_success(mocker):
     ],
 )
 def test_wrap_exceptions_applied(method_name):
-    connector = sqlalchemy_psycopg2_connector.SQLAlchemyPsycopg2Connector()
+    connector = SQLAlchemyPsycopg2Connector()
     assert getattr(connector, method_name)._exceptions_wrapped is True
 
 
 @pytest.fixture
 def mock_create_engine(mocker):
-    return mocker.patch.object(
-        sqlalchemy_psycopg2_connector.SQLAlchemyPsycopg2Connector, "_create_engine"
-    )
+    return mocker.patch.object(SQLAlchemyPsycopg2Connector, "_create_engine")
 
 
 def test_open_no_pool_specified(mock_create_engine):
-    connector = sqlalchemy_psycopg2_connector.SQLAlchemyPsycopg2Connector()
+    connector = SQLAlchemyPsycopg2Connector()
 
     connector.open()
 
@@ -147,7 +147,7 @@ def test_open_no_pool_specified(mock_create_engine):
 
 
 def test_open_pool_argument_specified(mock_create_engine, mocker):
-    connector = sqlalchemy_psycopg2_connector.SQLAlchemyPsycopg2Connector()
+    connector = SQLAlchemyPsycopg2Connector()
 
     engine = mocker.MagicMock()
     connector.open(engine)
@@ -158,7 +158,7 @@ def test_open_pool_argument_specified(mock_create_engine, mocker):
 
 
 def test_get_engine():
-    connector = sqlalchemy_psycopg2_connector.SQLAlchemyPsycopg2Connector()
+    connector = SQLAlchemyPsycopg2Connector()
 
     with pytest.raises(exceptions.AppNotOpen):
         _ = connector.engine

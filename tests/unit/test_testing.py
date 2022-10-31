@@ -1,10 +1,9 @@
 import asyncio
+import datetime
 
 import pytest
 
 from procrastinate import exceptions, utils
-
-from .. import conftest
 
 
 def test_reset(connector):
@@ -196,12 +195,12 @@ def test_select_stalled_jobs_all(connector):
         },
     }
     connector.events = {
-        1: [{"at": conftest.aware_datetime(2000, 1, 1)}],
-        2: [{"at": conftest.aware_datetime(2000, 1, 1)}],
-        3: [{"at": conftest.aware_datetime(2000, 1, 1)}],
-        4: [{"at": conftest.aware_datetime(2100, 1, 1)}],
-        5: [{"at": conftest.aware_datetime(2000, 1, 1)}],
-        6: [{"at": conftest.aware_datetime(2000, 1, 1)}],
+        1: [{"at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)}],
+        2: [{"at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)}],
+        3: [{"at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)}],
+        4: [{"at": datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc)}],
+        5: [{"at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)}],
+        6: [{"at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)}],
     }
 
     results = connector.select_stalled_jobs_all(
@@ -222,10 +221,25 @@ def test_delete_old_jobs_run(connector):
         4: {"id": 4, "status": "succeeded", "queue_name": "marsupilami"},
     }
     connector.events = {
-        1: [{"type": "succeeded", "at": conftest.aware_datetime(2000, 1, 1)}],
-        2: [{"type": "succeeded", "at": conftest.aware_datetime(2000, 1, 1)}],
+        1: [
+            {
+                "type": "succeeded",
+                "at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
+            }
+        ],
+        2: [
+            {
+                "type": "succeeded",
+                "at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
+            }
+        ],
         3: [{"type": "succeeded", "at": utils.utcnow()}],
-        4: [{"type": "succeeded", "at": conftest.aware_datetime(2000, 1, 1)}],
+        4: [
+            {
+                "type": "succeeded",
+                "at": datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc),
+            }
+        ],
     }
 
     connector.delete_old_jobs_run(
@@ -259,7 +273,7 @@ def test_fetch_job_one(connector):
         task_name="mytask",
         args={},
         queue="marsupilami",
-        scheduled_at=conftest.aware_datetime(2100, 1, 1),
+        scheduled_at=datetime.datetime(2100, 1, 1, tzinfo=datetime.timezone.utc),
         lock="c",
         queueing_lock="c",
     )
@@ -339,7 +353,7 @@ def test_retry_job_run(connector):
     job_row = connector.fetch_job_one(queues=None)
     id = job_row["id"]
 
-    retry_at = conftest.aware_datetime(2000, 1, 1)
+    retry_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
     connector.retry_job_run(job_id=id, retry_at=retry_at)
 
     assert connector.jobs[id]["attempts"] == 1

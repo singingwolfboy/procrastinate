@@ -5,7 +5,7 @@ import json
 import attr
 import pytest
 
-from procrastinate import aiopg_connector
+from procrastinate.connector.aiopg import AiopgConnector
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ async def aiopg_connector_factory(connection_params):
         json_dumps = kwargs.pop("json_dumps", None)
         json_loads = kwargs.pop("json_loads", None)
         connection_params.update(kwargs)
-        connector = aiopg_connector.AiopgConnector(
+        connector = AiopgConnector(
             json_dumps=json_dumps, json_loads=json_loads, **connection_params
         )
         connectors.append(connector)
@@ -34,7 +34,7 @@ async def test_adapt_pool_args_on_connect(mocker):
     async def on_connect(connection):
         called.append(connection)
 
-    args = aiopg_connector.AiopgConnector._adapt_pool_args(
+    args = AiopgConnector._adapt_pool_args(
         pool_args={"on_connect": on_connect}, json_loads=None
     )
 
@@ -233,7 +233,7 @@ async def test_loop_notify_timeout(aiopg_connector):
 
 
 async def test_destructor(connection_params, capsys):
-    connector = aiopg_connector.AiopgConnector(**connection_params)
+    connector = AiopgConnector(**connection_params)
     await connector.open_async()
     await connector.execute_query_async("SELECT 1")
 

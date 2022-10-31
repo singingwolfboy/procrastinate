@@ -4,9 +4,9 @@ import procrastinate
 
 
 @pytest.fixture
-async def async_app_context_manager(not_opened_aiopg_connector):
+async def async_app_context_manager(not_opened_async_connector):
     async with procrastinate.App(
-        connector=not_opened_aiopg_connector
+        connector=not_opened_async_connector
     ).open_async() as app:
         yield app
 

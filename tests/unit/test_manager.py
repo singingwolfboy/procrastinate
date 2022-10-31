@@ -1,10 +1,9 @@
+import datetime
 import uuid
 
 import pytest
 
 from procrastinate import exceptions, jobs, manager
-
-from .. import conftest
 
 
 async def test_manager_defer_job(job_manager, job_factory, connector):
@@ -93,14 +92,16 @@ async def test_get_stalled_jobs_stalled(job_manager, job_factory, connector):
     job = job_factory()
     await job_manager.defer_job_async(job=job)
     await job_manager.fetch_job(queues=None)
-    connector.events[1][-1]["at"] = conftest.aware_datetime(2000, 1, 1)
+    connector.events[1][-1]["at"] = datetime.datetime(
+        2000, 1, 1, tzinfo=datetime.timezone.utc
+    )
     expected_job = job.evolve(id=1, status="doing")
     assert await job_manager.get_stalled_jobs(nb_seconds=1000) == [expected_job]
 
 
 @pytest.mark.parametrize(
     "include_error, statuses",
-    [(False, ("succeeded",)), (True, ("succeeded", "failed"))],
+    [(False, ["succeeded"]), (True, ["succeeded", "failed"])],
 )
 async def test_delete_old_jobs(
     job_manager, job_factory, connector, include_error, statuses, mocker
@@ -145,7 +146,7 @@ async def test_finish_job_with_deletion(job_manager, job_factory, connector):
 async def test_retry_job(job_manager, job_factory, connector):
     job = job_factory(id=1)
     await job_manager.defer_job_async(job=job)
-    retry_at = conftest.aware_datetime(2000, 1, 1)
+    retry_at = datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc)
 
     await job_manager.retry_job(job=job, retry_at=retry_at)
     assert connector.queries[-1] == (

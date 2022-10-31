@@ -5,18 +5,16 @@ import pytest
 
 from procrastinate import exceptions, jobs, manager
 
-from .. import conftest
+
+@pytest.fixture
+def pg_job_manager(async_connector):
+    return manager.JobManager(connector=async_connector)
 
 
 @pytest.fixture
-def pg_job_manager(aiopg_connector):
-    return manager.JobManager(connector=aiopg_connector)
-
-
-@pytest.fixture
-def get_all(aiopg_connector):
+def get_all(async_connector):
     async def f(table, *fields):
-        return await aiopg_connector.execute_query_all_async(
+        return await async_connector.execute_query_all_async(
             f"SELECT {', '.join(fields)} FROM {table}"
         )
 
@@ -45,7 +43,14 @@ def fetched_job_factory(deferred_job_factory, pg_job_manager):
     [
         ({"queue": "queue_a"}, None),
         ({"queue": "queue_a"}, ["queue_a"]),
-        ({"scheduled_at": conftest.aware_datetime(2000, 1, 1)}, None),
+        (
+            {
+                "scheduled_at": datetime.datetime(
+                    2000, 1, 1, tzinfo=datetime.timezone.utc
+                )
+            },
+            None,
+        ),
     ],
 )
 async def test_fetch_job(
@@ -93,7 +98,14 @@ async def test_fetch_job_spacial_case_none_lock(
         # We won't see this one because of the queue
         ({"queue": "queue_b"}, ["queue_a"]),
         # We won't see this one because of the scheduled date
-        ({"scheduled_at": conftest.aware_datetime(2100, 1, 1)}, None),
+        (
+            {
+                "scheduled_at": datetime.datetime(
+                    2100, 1, 1, tzinfo=datetime.timezone.utc
+                )
+            },
+            None,
+        ),
     ],
 )
 async def test_fetch_job_no_result(
@@ -113,12 +125,12 @@ async def test_fetch_job_no_result(
     ],
 )
 async def test_get_stalled_jobs_yes(
-    pg_job_manager, fetched_job_factory, aiopg_connector, filter_args
+    pg_job_manager, fetched_job_factory, async_connector, filter_args
 ):
     job = await fetched_job_factory(queue="queue_a", task_name="task_1")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '35 minutes'"
         f"WHERE job_id={job.id}"
     )
@@ -136,12 +148,12 @@ async def test_get_stalled_jobs_yes(
     ],
 )
 async def test_get_stalled_jobs_no(
-    pg_job_manager, fetched_job_factory, aiopg_connector, filter_args
+    pg_job_manager, fetched_job_factory, async_connector, filter_args
 ):
     job = await fetched_job_factory(queue="queue_a", task_name="task_1")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '35 minutes'"
         f"WHERE job_id={job.id}"
     )
@@ -153,13 +165,13 @@ async def test_get_stalled_jobs_no(
 async def test_delete_old_jobs_job_todo(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     deferred_job_factory,
 ):
     job = await deferred_job_factory(queue="queue_a")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -171,13 +183,13 @@ async def test_delete_old_jobs_job_todo(
 async def test_delete_old_jobs_job_doing(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     fetched_job_factory,
 ):
     job = await fetched_job_factory(queue="queue_a")
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -205,7 +217,7 @@ async def test_delete_old_jobs_job_doing(
 async def test_delete_old_jobs_parameters(
     get_all,
     pg_job_manager,
-    aiopg_connector,
+    async_connector,
     status,
     nb_hours,
     queue,
@@ -219,7 +231,7 @@ async def test_delete_old_jobs_parameters(
     await pg_job_manager.finish_job(job, status=status, delete_job=False)
 
     # We fake its started event timestamp
-    await aiopg_connector.execute_query_async(
+    await async_connector.execute_query_async(
         f"UPDATE procrastinate_events SET at=at - INTERVAL '2 hours'"
         f"WHERE job_id={job.id}"
     )
@@ -283,7 +295,9 @@ async def test_finish_job_wrong_end_status(
 async def test_retry_job(pg_job_manager, fetched_job_factory):
     job1 = await fetched_job_factory(queue="queue_a")
 
-    await pg_job_manager.retry_job(job=job1, retry_at=datetime.datetime.utcnow())
+    await pg_job_manager.retry_job(
+        job=job1, retry_at=datetime.datetime.now(tz=datetime.timezone.utc)
+    )
 
     job2 = await pg_job_manager.fetch_job(queues=None)
 
@@ -291,10 +305,10 @@ async def test_retry_job(pg_job_manager, fetched_job_factory):
     assert job2.attempts == job1.attempts + 1
 
 
-async def test_enum_synced(aiopg_connector):
+async def test_enum_synced(async_connector):
     # If this test breaks, it means you've changed either the task_status PG enum
     # or the python procrastinate.jobs.Status Enum without updating the other.
-    pg_enum_rows = await aiopg_connector.execute_query_all_async(
+    pg_enum_rows = await async_connector.execute_query_all_async(
         """SELECT e.enumlabel FROM pg_enum e
                JOIN pg_type t ON e.enumtypid = t.oid WHERE t.typname = %(type_name)s""",
         type_name="procrastinate_job_status",
@@ -476,7 +490,7 @@ async def test_list_tasks_dict(fixture_jobs, pg_job_manager):
 
 
 async def test_list_locks_dict(fixture_jobs, job_factory, pg_job_manager):
-    pg_job_manager.defer_job_async(
+    await pg_job_manager.defer_job_async(
         job=job_factory(
             queue="q3",
             lock=None,

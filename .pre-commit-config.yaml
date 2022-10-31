@@ -31,6 +31,7 @@ repos:
     files: ^procrastinate/
     args: []
     additional_dependencies:
+    - asyncpg-stubs
     - attrs==21.4.0
     - click==8.0.3
     - sqlalchemy[mypy]==1.4.29

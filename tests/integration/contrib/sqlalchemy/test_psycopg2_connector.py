@@ -4,7 +4,9 @@ import json
 import psycopg2.errors
 import pytest
 
-from procrastinate.contrib.sqlalchemy import SQLAlchemyPsycopg2Connector
+from procrastinate.contrib.sqlalchemy.connector.psycopg2 import (
+    SQLAlchemyPsycopg2Connector,
+)
 
 
 @pytest.fixture
