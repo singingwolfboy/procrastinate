@@ -204,11 +204,6 @@ class AsyncpgConnector(BaseAsyncConnector):
         await self._pool.close()
         self._pool = None
 
-    async def __del__(self):
-        if self._pool and not self._pool_externally_set:
-            # Consider https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for
-            await asyncio.wait_for(self._pool.close(), 3)
-
     @wrap_exceptions
     @wrap_query_exceptions
     async def execute_query_async(self, query: str, **arguments: Any) -> None:
