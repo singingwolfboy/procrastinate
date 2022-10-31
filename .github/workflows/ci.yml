@@ -45,7 +45,7 @@ jobs:
       - run: pip install .[test]
 
       - name: Run tests
-        run: scripts/tests
+        run: pytest
         env:
           COVERAGE_FILE: ".coverage.${{ matrix.python-version }}"
           PGHOST: localhost
