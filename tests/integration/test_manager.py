@@ -295,7 +295,9 @@ async def test_finish_job_wrong_end_status(
 async def test_retry_job(pg_job_manager, fetched_job_factory):
     job1 = await fetched_job_factory(queue="queue_a")
 
-    await pg_job_manager.retry_job(job=job1, retry_at=datetime.datetime.utcnow())
+    await pg_job_manager.retry_job(
+        job=job1, retry_at=datetime.datetime.now(tz=datetime.timezone.utc)
+    )
 
     job2 = await pg_job_manager.fetch_job(queues=None)
 
